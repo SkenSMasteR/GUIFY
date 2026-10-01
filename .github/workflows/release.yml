@@ -22,7 +22,9 @@ jobs:
             glob: "src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg"
           - platform: ubuntu-latest
             args: "--bundles appimage,deb"
-            glob: "src-tauri/target/release/bundle/{appimage,deb}/*"
+            glob: |
+              src-tauri/target/release/bundle/appimage/*.AppImage
+              src-tauri/target/release/bundle/deb/*.deb
 
     runs-on: ${{ matrix.platform }}
     permissions:
