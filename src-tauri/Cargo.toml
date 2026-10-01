@@ -1,0 +1,36 @@
+[package]
+name = "guify"
+version = "0.1.0"
+description = "A Tauri GUI for the Spicetify CLI"
+authors = ["SkenSMasteR"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "guify_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["process", "rt", "macros", "io-util", "sync", "fs", "time", "net"] }
+urlencoding = "2"
+thiserror = "2"
+futures = "0.3"
+tokio-tungstenite = "0.29.0"
+
+[features]
+default = ["devtools"]
+devtools = ["tauri/devtools"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
