@@ -173,5 +173,11 @@ export const onSnippetsConnected = (cb: (connected: boolean) => void) =>
 export const devmodeListProjects = () => invoke<ProjectMeta[]>("devmode_list_projects");
 export const devmodeCreateProject = (meta: ProjectMeta) =>
   invoke<ProjectMeta>("devmode_create_project", { meta });
+export const devmodeListFiles = (project: string) =>
+  invoke<string[]>("devmode_list_files", { project });
+export const devmodeReadFile = (project: string, path: string) =>
+  invoke<string>("devmode_read_file", { project, path });
+export const devmodeWriteFile = (project: string, path: string, contents: string) =>
+  invoke<void>("devmode_write_file", { project, path, contents });
 
 export { openUrl };

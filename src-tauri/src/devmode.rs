@@ -120,3 +120,84 @@ pub async fn devmode_list_projects(app: AppHandle) -> Result<Vec<ProjectMeta>> {
 pub async fn devmode_create_project(app: AppHandle, meta: ProjectMeta) -> Result<ProjectMeta> {
     create_project(&app, meta).await
 }
+
+fn project_dir(app: &AppHandle, name: &str) -> Result<PathBuf> {
+    if !is_safe_part(name) {
+        return Err(Error::Command("Invalid project name".into()));
+    }
+    Ok(projects_root(app)?.join(name))
+}
+
+fn is_safe_rel_path(rel: &str) -> bool {
+    !rel.is_empty() && rel.split(['/', '\\']).all(is_safe_part)
+}
+
+fn normalize_rel_path(rel: &str) -> String {
+    rel.replace('\\', "/")
+}
+
+async fn walk(dir: &Path, base: &Path, out: &mut Vec<String>) -> Result<()> {
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(current) = stack.pop() {
+        let mut entries = tokio::fs::read_dir(&current).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if entry.file_type().await?.is_dir() {
+                stack.push(path);
+            } else if let Some(rel) = path.strip_prefix(base).ok() {
+                out.push(normalize_rel_path(&rel.to_string_lossy()));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub async fn list_files(app: &AppHandle, project: &str) -> Result<Vec<String>> {
+    let dir = project_dir(app, project)?;
+    let mut out = Vec::new();
+    walk(&dir, &dir, &mut out).await?;
+    out.sort();
+    Ok(out)
+}
+
+pub async fn read_file(app: &AppHandle, project: &str, path: &str) -> Result<String> {
+    if !is_safe_rel_path(path) {
+        return Err(Error::Command("Invalid file path".into()));
+    }
+    let full = project_dir(app, project)?.join(path);
+    let bytes = tokio::fs::read(&full).await?;
+    String::from_utf8(bytes)
+        .map_err(|_| Error::Command(format!("{path} is not a text file; binary editing is unsupported")))
+}
+
+pub async fn write_file(app: &AppHandle, project: &str, path: &str, contents: &str) -> Result<()> {
+    if !is_safe_rel_path(path) {
+        return Err(Error::Command("Invalid file path".into()));
+    }
+    let full = project_dir(app, project)?.join(path);
+    if let Some(parent) = full.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    tokio::fs::write(&full, contents).await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn devmode_list_files(app: AppHandle, project: String) -> Result<Vec<String>> {
+    list_files(&app, &project).await
+}
+
+#[tauri::command]
+pub async fn devmode_read_file(app: AppHandle, project: String, path: String) -> Result<String> {
+    read_file(&app, &project, &path).await
+}
+
+#[tauri::command]
+pub async fn devmode_write_file(
+    app: AppHandle,
+    project: String,
+    path: String,
+    contents: String,
+) -> Result<()> {
+    write_file(&app, &project, &path, &contents).await
+}

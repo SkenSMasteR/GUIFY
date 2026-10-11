@@ -58,7 +58,10 @@ pub fn run() {
             commands::toggle_market_snippet,
             commands::snippets_connected,
             devmode::devmode_list_projects,
-            devmode::devmode_create_project
+            devmode::devmode_create_project,
+            devmode::devmode_list_files,
+            devmode::devmode_read_file,
+            devmode::devmode_write_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running GUIFY");
