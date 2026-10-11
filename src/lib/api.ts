@@ -173,11 +173,62 @@ export const onSnippetsConnected = (cb: (connected: boolean) => void) =>
 export const devmodeListProjects = () => invoke<ProjectMeta[]>("devmode_list_projects");
 export const devmodeCreateProject = (meta: ProjectMeta) =>
   invoke<ProjectMeta>("devmode_create_project", { meta });
+export const devmodeCloneProject = (url: string) =>
+  invoke<ProjectMeta>("devmode_clone_project", { url });
+export interface DevmodeAction {
+  name: string;
+  commands: string[];
+}
+export const devmodeListActions = (project: string) =>
+  invoke<DevmodeAction[]>("devmode_list_actions", { project });
 export const devmodeListFiles = (project: string) =>
   invoke<string[]>("devmode_list_files", { project });
 export const devmodeReadFile = (project: string, path: string) =>
   invoke<string>("devmode_read_file", { project, path });
 export const devmodeWriteFile = (project: string, path: string, contents: string) =>
   invoke<void>("devmode_write_file", { project, path, contents });
+export const devmodeCreatePath = (project: string, path: string, isDir: boolean) =>
+  invoke<void>("devmode_create_path", { project, path, isDir });
+export const devmodeRenamePath = (project: string, fromPath: string, toPath: string) =>
+  invoke<void>("devmode_rename_path", { project, fromPath, toPath });
+export const devmodeDeletePath = (project: string, path: string) =>
+  invoke<void>("devmode_delete_path", { project, path });
+export const devmodeUpdateProject = (oldName: string, meta: ProjectMeta) =>
+  invoke<ProjectMeta>("devmode_update_project", { oldName, meta });
+export const devmodeDeleteProject = (name: string) =>
+  invoke<void>("devmode_delete_project", { name });
+export const devmodeProjectPath = (name: string) =>
+  invoke<string>("devmode_project_path", { name });
+export const devmodeRevealProject = (name: string) =>
+  invoke<void>("devmode_reveal_project", { name });
+export const devmodeInstallBridge = () => invoke<void>("devmode_install_bridge");
+export const devmodeSend = (payload: string) => invoke<void>("devmode_send", { payload });
+export const devmodeConnected = () => invoke<boolean>("devmode_connected");
+export const onDevmodeConnected = (cb: (connected: boolean) => void) =>
+  listen<boolean>("devmode-connected", (e) => cb(e.payload));
+
+export interface DevmodeConsoleLine {
+  id: number;
+  line: string;
+}
+
+export interface DevmodeConsoleResult {
+  id: number;
+  ok: boolean;
+  result: string;
+}
+
+export const devmodeConsoleOpen = (provider: string, project: string) =>
+  invoke<number>("devmode_console_open", { provider, project });
+export const devmodeConsoleWrite = (id: number, line: string) =>
+  invoke<void>("devmode_console_write", { id, line });
+export const devmodeConsoleClose = (id: number) =>
+  invoke<void>("devmode_console_close", { id });
+export const devmodeConsoleEval = (id: number, code: string) =>
+  invoke<void>("devmode_console_eval", { id, code });
+export const onDevmodeConsoleLine = (cb: (line: DevmodeConsoleLine) => void) =>
+  listen<DevmodeConsoleLine>("devmode-console-line", (e) => cb(e.payload));
+export const onDevmodeConsoleResult = (cb: (result: DevmodeConsoleResult) => void) =>
+  listen<DevmodeConsoleResult>("devmode-console-result", (e) => cb(e.payload));
 
 export { openUrl };

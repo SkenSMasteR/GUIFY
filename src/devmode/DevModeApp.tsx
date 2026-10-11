@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, Minus, Plus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
-import { getWindowControls, type WindowControls } from "@/lib/api";
+import { getWindowControls, devmodeSend, type WindowControls } from "@/lib/api";
 import { closeWindow, isMaximized, minimize, toggleMaximize } from "@/lib/window";
 import { cn } from "@/lib/utils";
 import { DevModeProvider, useDevMode } from "./store";
@@ -34,10 +34,17 @@ function MacDot({
 }
 
 function DevModeBody() {
-  const { screen, backToProjects } = useDevMode();
+  const { screen, backToProjects, spotifyConnected } = useDevMode();
   const { setMode } = useApp();
   const [maximized, setMaximized] = useState(false);
   const [controls, setControls] = useState<WindowControls | null>(null);
+
+  const exitDevMode = () => {
+    if (spotifyConnected) {
+      void devmodeSend(JSON.stringify({ type: "clear" })).catch(() => {});
+    }
+    setMode("guify");
+  };
 
   useEffect(() => {
     getWindowControls().then(setControls).catch(() => setControls("windows"));
@@ -73,7 +80,7 @@ function DevModeBody() {
             </MacDot>
           </div>
         )}
-        <Button variant="ghost" size="sm" onClick={() => setMode("guify")}>
+        <Button variant="ghost" size="sm" onClick={exitDevMode}>
           <ArrowLeft />
           <span>Exit DevMode</span>
         </Button>

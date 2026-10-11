@@ -2,6 +2,8 @@ mod cli;
 mod commands;
 mod config;
 mod devmode;
+mod devmode_bridge;
+mod devmode_console;
 mod discovery;
 mod error;
 mod extension;
@@ -23,6 +25,7 @@ pub fn run() {
             tauri::async_runtime::block_on(snippets::load(&handle, &state));
             tauri::async_runtime::block_on(snippets::load_market(&handle, &state));
             tauri::async_runtime::spawn(snippets::serve(handle.clone()));
+            tauri::async_runtime::spawn(devmode_bridge::serve(handle.clone()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -59,9 +62,25 @@ pub fn run() {
             commands::snippets_connected,
             devmode::devmode_list_projects,
             devmode::devmode_create_project,
+            devmode::devmode_clone_project,
+            devmode::devmode_list_actions,
             devmode::devmode_list_files,
             devmode::devmode_read_file,
-            devmode::devmode_write_file
+            devmode::devmode_write_file,
+            devmode::devmode_create_path,
+            devmode::devmode_rename_path,
+            devmode::devmode_delete_path,
+            devmode::devmode_update_project,
+            devmode::devmode_delete_project,
+            devmode::devmode_project_path,
+            devmode::devmode_reveal_project,
+            devmode_bridge::devmode_install_bridge,
+            devmode_bridge::devmode_connected,
+            devmode_bridge::devmode_send,
+            devmode_bridge::devmode_console_eval,
+            devmode_console::devmode_console_open,
+            devmode_console::devmode_console_write,
+            devmode_console::devmode_console_close
         ])
         .run(tauri::generate_context!())
         .expect("error while running GUIFY");

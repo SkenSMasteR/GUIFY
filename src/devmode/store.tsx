@@ -9,7 +9,17 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { devmodeCreateProject, devmodeListProjects, type ProjectMeta } from "@/lib/api";
+import {
+  devmodeConnected,
+  devmodeCloneProject,
+  devmodeCreateProject,
+  devmodeDeleteProject,
+  devmodeInstallBridge,
+  devmodeListProjects,
+  devmodeUpdateProject,
+  onDevmodeConnected,
+  type ProjectMeta,
+} from "@/lib/api";
 
 export type { ProjectMeta };
 
@@ -36,6 +46,12 @@ interface Ctx {
   loading: boolean;
   reload: () => Promise<void>;
   createProject: (meta: ProjectMeta) => Promise<boolean>;
+  cloneProject: (url: string) => Promise<ProjectMeta | null>;
+  editProject: (oldName: string, meta: ProjectMeta) => Promise<boolean>;
+  deleteProject: (name: string) => Promise<void>;
+  syncMeta: (meta: ProjectMeta) => void;
+  spotifyConnected: boolean;
+  installBridge: () => Promise<void>;
 }
 
 const DevModeCtx = createContext<Ctx | null>(null);
@@ -86,6 +102,83 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const cloneProject = useCallback(
+    async (url: string): Promise<ProjectMeta | null> => {
+      const id = toast.loading("Cloning repository…");
+      try {
+        const cloned = await devmodeCloneProject(url);
+        setProjects((prev) =>
+          [...prev, cloned].sort((a, b) =>
+            a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
+          ),
+        );
+        toast.success(`Project ${cloned.name} cloned`, { id });
+        return cloned;
+      } catch (e) {
+        toast.error(String(e), { id });
+        return null;
+      }
+    },
+    [],
+  );
+
+  const editProject = useCallback(
+    async (oldName: string, meta: ProjectMeta) => {
+      const id = toast.loading(`Saving ${oldName}…`);
+      try {
+        const updated = await devmodeUpdateProject(oldName, meta);
+        await reload();
+        setActiveProject((prev) => (prev && prev.name === oldName ? updated : prev));
+        toast.success(`Project ${updated.name} saved`, { id });
+        return true;
+      } catch (e) {
+        toast.error(String(e), { id });
+        return false;
+      }
+    },
+    [reload],
+  );
+
+  const deleteProject = useCallback(
+    async (name: string) => {
+      const id = toast.loading(`Deleting ${name}…`);
+      try {
+        await devmodeDeleteProject(name);
+        setProjects((prev) => prev.filter((p) => p.name !== name));
+        setActiveProject((prev) => (prev?.name === name ? null : prev));
+        toast.success(`Project ${name} deleted`, { id });
+      } catch (e) {
+        toast.error(String(e), { id });
+      }
+    },
+    [],
+  );
+
+  const syncMeta = useCallback((meta: ProjectMeta) => {
+    setActiveProject((prev) => (prev && prev.name === meta.name ? meta : prev));
+    setProjects((prev) => prev.map((p) => (p.name === meta.name ? meta : p)));
+  }, []);
+
+  const [spotifyConnected, setSpotifyConnected] = useState(false);
+
+  useEffect(() => {
+    devmodeConnected().then(setSpotifyConnected).catch(() => {});
+    const un = onDevmodeConnected(setSpotifyConnected);
+    return () => {
+      un.then((f) => f());
+    };
+  }, []);
+
+  const installBridge = useCallback(async () => {
+    const id = toast.loading("Installing bridge extension…");
+    try {
+      await devmodeInstallBridge();
+      toast.success("betterdevmode installed. Apply Spicetify, then restart Spotify", { id });
+    } catch (e) {
+      toast.error(String(e), { id });
+    }
+  }, []);
+
   const openEditor = useCallback((project: ProjectMeta) => {
     setActiveProject(project);
     setScreen("editor");
@@ -110,8 +203,17 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
       loading,
       reload,
       createProject,
+      cloneProject,
+      editProject,
+      deleteProject,
+      syncMeta,
+      spotifyConnected,
+      installBridge,
     }),
-    [screen, openEditor, backToProjects, activeProject, projects, loading, reload, createProject],
+    [
+      screen, openEditor, backToProjects, activeProject, projects, loading, reload,
+      createProject, cloneProject, editProject, deleteProject, syncMeta, spotifyConnected, installBridge,
+    ],
   );
 
   return <DevModeCtx.Provider value={value}>{children}</DevModeCtx.Provider>;

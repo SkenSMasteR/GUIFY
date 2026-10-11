@@ -1,5 +1,25 @@
-import { useState } from "react";
-import { FilePlus2, FolderOpen, Plus, Box } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  ChevronDown,
+  FilePlus2,
+  FolderOpen,
+  GitBranch,
+  Loader2,
+  Pencil,
+  Plus,
+  Box,
+  Trash2,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +30,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,9 +84,13 @@ const EMPTY_DRAFT: Draft = {
   preview: "",
 };
 
+const isExtensionDraft = (draft: Draft) =>
+  parseList(draft.tags).some((t) => t.toLowerCase() === "extension");
+
 function draftToMeta(draft: Draft): ProjectMeta {
   const withSuffix = (file: string, suffix: string) =>
     file && !file.endsWith(suffix) ? `${file}${suffix}` : file;
+  const extension = isExtensionDraft(draft);
   return {
     name: draft.name.trim(),
     tags: parseList(draft.tags),
@@ -69,7 +99,7 @@ function draftToMeta(draft: Draft): ProjectMeta {
     description: draft.description.trim(),
     entries: {
       js: withSuffix(draft.js.trim(), ".js"),
-      css: withSuffix(draft.css.trim(), ".css"),
+      css: extension ? "" : withSuffix(draft.css.trim(), ".css"),
     },
     hasMixins: draft.hasMixins,
     dependencies: parseDependencies(draft.dependencies),
@@ -77,27 +107,58 @@ function draftToMeta(draft: Draft): ProjectMeta {
   };
 }
 
-function NewProjectDialog({
+function metaToDraft(meta: ProjectMeta): Draft {
+  return {
+    name: meta.name,
+    version: meta.version,
+    tags: meta.tags.join(", "),
+    authors: meta.authors.join(", "),
+    description: meta.description,
+    js: meta.entries.js,
+    css: meta.entries.css,
+    hasMixins: meta.hasMixins,
+    dependencies: Object.entries(meta.dependencies)
+      .map(([k, v]) => `${k}@${v}`)
+      .join(", "),
+    preview: meta.preview,
+  };
+}
+
+export function ProjectDialog({
   open,
   onOpenChange,
+  initial,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initial: ProjectMeta | null;
 }) {
-  const { createProject, openEditor } = useDevMode();
+  const { createProject, editProject, openEditor } = useDevMode();
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [busy, setBusy] = useState(false);
+  const isEdit = initial !== null;
+
+  useEffect(() => {
+    if (open) setDraft(initial ? metaToDraft(initial) : EMPTY_DRAFT);
+  }, [open, initial]);
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const meta = draftToMeta(draft);
-  const valid = meta.name.length > 0 && meta.entries.js.length > 0 && meta.entries.css.length > 0;
+  const extension = isExtensionDraft(draft);
+  const valid =
+    meta.name.length > 0 && meta.entries.js.length > 0 && (extension || meta.entries.css.length > 0);
 
   const submit = async () => {
     setBusy(true);
+    if (isEdit && initial) {
+      const ok = await editProject(initial.name, meta);
+      setBusy(false);
+      if (ok) onOpenChange(false);
+      return;
+    }
     const created = await createProject(meta);
     setBusy(false);
     if (created) {
-      setDraft(EMPTY_DRAFT);
       onOpenChange(false);
       openEditor(meta);
     }
@@ -107,22 +168,24 @@ function NewProjectDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>New project</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit ${initial?.name}` : "New project"}</DialogTitle>
         </DialogHeader>
-        <div className="grid max-h-[60vh] gap-4 overflow-y-auto pr-1">
+        <div className="dm-scroll grid max-h-[60vh] gap-4 overflow-y-auto pr-1">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="dm-name">Name</Label>
               <Input
+                autoComplete="off"
                 id="dm-name"
                 value={draft.name}
                 onChange={(e) => set({ name: e.target.value })}
-                placeholder="spotui"
+                placeholder="my-theme"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="dm-version">Version</Label>
               <Input
+                autoComplete="off"
                 id="dm-version"
                 value={draft.version}
                 onChange={(e) => set({ version: e.target.value })}
@@ -133,10 +196,11 @@ function NewProjectDialog({
           <div className="grid gap-2">
             <Label htmlFor="dm-description">Description</Label>
             <Textarea
+              autoComplete="off"
               id="dm-description"
               value={draft.description}
               onChange={(e) => set({ description: e.target.value })}
-              placeholder="Terminal interface for Spotify…"
+              placeholder="A short description of your project…"
               rows={3}
             />
           </div>
@@ -144,6 +208,7 @@ function NewProjectDialog({
             <div className="grid gap-2">
               <Label htmlFor="dm-authors">Authors</Label>
               <Input
+                autoComplete="off"
                 id="dm-authors"
                 value={draft.authors}
                 onChange={(e) => set({ authors: e.target.value })}
@@ -153,6 +218,7 @@ function NewProjectDialog({
             <div className="grid gap-2">
               <Label htmlFor="dm-tags">Tags</Label>
               <Input
+                autoComplete="off"
                 id="dm-tags"
                 value={draft.tags}
                 onChange={(e) => set({ tags: e.target.value })}
@@ -164,6 +230,7 @@ function NewProjectDialog({
             <div className="grid gap-2">
               <Label htmlFor="dm-js">JS entry</Label>
               <Input
+                autoComplete="off"
                 id="dm-js"
                 value={draft.js}
                 onChange={(e) => set({ js: e.target.value })}
@@ -173,10 +240,12 @@ function NewProjectDialog({
             <div className="grid gap-2">
               <Label htmlFor="dm-css">CSS entry</Label>
               <Input
+                autoComplete="off"
                 id="dm-css"
-                value={draft.css}
+                value={extension ? "" : draft.css}
                 onChange={(e) => set({ css: e.target.value })}
-                placeholder="user.css"
+                placeholder={extension ? "Extensions have no CSS entry" : "user.css"}
+                disabled={extension}
               />
             </div>
           </div>
@@ -184,6 +253,7 @@ function NewProjectDialog({
             <div className="grid gap-2">
               <Label htmlFor="dm-deps">Dependencies</Label>
               <Input
+                autoComplete="off"
                 id="dm-deps"
                 value={draft.dependencies}
                 onChange={(e) => set({ dependencies: e.target.value })}
@@ -193,6 +263,7 @@ function NewProjectDialog({
             <div className="grid gap-2">
               <Label htmlFor="dm-preview">Preview URL</Label>
               <Input
+                autoComplete="off"
                 id="dm-preview"
                 value={draft.preview}
                 onChange={(e) => set({ preview: e.target.value })}
@@ -216,7 +287,93 @@ function NewProjectDialog({
             Cancel
           </Button>
           <Button disabled={!valid || busy} onClick={() => void submit()}>
-            Create project
+            {isEdit ? "Save changes" : "Create project"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NewProjectMenu({
+  onCreate,
+  onClone,
+  align = "end",
+}: {
+  onCreate: () => void;
+  onClone: () => void;
+  align?: "start" | "center" | "end";
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm">
+          <Plus /> New project
+          <ChevronDown className="opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={align} className="w-52">
+        <DropdownMenuItem onClick={onCreate}>
+          <FilePlus2 /> Create from scratch
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onClone}>
+          <GitBranch /> Clone repository
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function CloneDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { cloneProject, openEditor } = useDevMode();
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    const meta = await cloneProject(url.trim());
+    setBusy(false);
+    if (meta) {
+      setUrl("");
+      onOpenChange(false);
+      openEditor(meta);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Clone repository</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-2">
+          <Label htmlFor="dm-clone-url">Repository URL</Label>
+          <Input
+            autoComplete="off"
+            id="dm-clone-url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && url.trim()) void submit();
+            }}
+            placeholder="https://github.com/user/repo"
+          />
+          <p className="text-muted-foreground text-xs">
+            The repository must contain a metadata.json to be accepted.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={!url.trim() || busy} onClick={() => void submit()}>
+            {busy && <Loader2 className="animate-spin" />} Clone
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -225,8 +382,20 @@ function NewProjectDialog({
 }
 
 export function ProjectsView() {
-  const { projects, loading, openEditor } = useDevMode();
-  const [creating, setCreating] = useState(false);
+  const { projects, loading, openEditor, deleteProject } = useDevMode();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [editing, setEditing] = useState<ProjectMeta | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<ProjectMeta | null>(null);
+
+  const startCreate = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const startEdit = (p: ProjectMeta) => {
+    setEditing(p);
+    setDialogOpen(true);
+  };
 
   return (
     <div className="grid gap-6 p-6">
@@ -237,9 +406,9 @@ export function ProjectsView() {
             {projects.length}
           </span>
         </h2>
-        <Button size="sm" className="ml-auto" onClick={() => setCreating(true)}>
-          <Plus /> New project
-        </Button>
+        <div className="ml-auto">
+          <NewProjectMenu onCreate={startCreate} onClone={() => setCloneOpen(true)} />
+        </div>
       </div>
 
       {loading ? (
@@ -257,9 +426,11 @@ export function ProjectsView() {
           <p className="text-muted-foreground max-w-sm text-sm">
             Create a Spicetify project to edit its CSS and JS with live apply.
           </p>
-          <Button onClick={() => setCreating(true)}>
-            <Plus /> New project
-          </Button>
+          <NewProjectMenu
+            align="center"
+            onCreate={startCreate}
+            onClone={() => setCloneOpen(true)}
+          />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -297,12 +468,46 @@ export function ProjectsView() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground font-mono text-[11px]">
-                    {p.entries.js} · {p.entries.css}
+                  <span className="text-muted-foreground truncate font-mono text-[11px]">
+                    {p.entries.js}
+                    {p.entries.css ? ` / ${p.entries.css}` : ""}
                   </span>
-                  <Button size="sm" variant="outline" className="ml-auto" onClick={(e) => { e.stopPropagation(); openEditor(p); }}>
-                    <FolderOpen /> Open
-                  </Button>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="size-7 p-0"
+                      title="Edit project"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEdit(p);
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive size-7 p-0"
+                      title="Delete project"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete(p);
+                      }}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditor(p);
+                      }}
+                    >
+                      <FolderOpen /> Open
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -310,7 +515,35 @@ export function ProjectsView() {
         </div>
       )}
 
-      <NewProjectDialog open={creating} onOpenChange={setCreating} />
+      <ProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} initial={editing} />
+      <CloneDialog open={cloneOpen} onOpenChange={setCloneOpen} />
+
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(v) => !v && setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes <span className="font-medium">{confirmDelete?.name}</span>{" "}
+              and all its files from disk.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmDelete) void deleteProject(confirmDelete.name);
+                setConfirmDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
