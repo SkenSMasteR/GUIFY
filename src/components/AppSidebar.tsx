@@ -5,6 +5,7 @@ import {
   Settings,
   Scissors,
   Sparkles,
+  Code,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -30,7 +31,7 @@ const mainItems: { view: View; label: string; icon: LucideIcon }[] = [
 ];
 
 export function AppSidebar() {
-  const { view, setView, advanced, status } = useApp();
+  const { view, setView, advanced, status, setMode } = useApp();
 
   return (
     <Sidebar collapsible="icon">
@@ -93,6 +94,12 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="DevMode" onClick={() => setMode("devmode")}>
+              <Code />
+              <span>DevMode</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Settings"
