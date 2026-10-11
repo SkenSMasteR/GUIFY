@@ -25,6 +25,12 @@ pub struct AppState {
     pub market: Mutex<Vec<crate::snippets::MarketSnippet>>,
     pub css_tx: broadcast::Sender<String>,
     pub ws_clients: AtomicUsize,
+    pub devmode_tx: broadcast::Sender<String>,
+    pub devmode_clients: AtomicUsize,
+    pub devmode_consoles: std::sync::Mutex<
+        HashMap<u64, crate::devmode_console::LiveConsole>,
+    >,
+    pub devmode_console_seq: std::sync::atomic::AtomicU64,
 }
 
 impl AppState {
@@ -34,6 +40,7 @@ impl AppState {
             .build()
             .expect("failed to build http client");
         let (css_tx, _) = broadcast::channel(16);
+        let (devmode_tx, _) = broadcast::channel(16);
         Self {
             client,
             watch: Mutex::new(None),
@@ -42,6 +49,10 @@ impl AppState {
             market: Mutex::new(Vec::new()),
             css_tx,
             ws_clients: AtomicUsize::new(0),
+            devmode_tx,
+            devmode_clients: AtomicUsize::new(0),
+            devmode_consoles: std::sync::Mutex::new(HashMap::new()),
+            devmode_console_seq: std::sync::atomic::AtomicU64::new(0),
         }
     }
 }

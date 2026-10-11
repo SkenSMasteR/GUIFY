@@ -15,6 +15,7 @@ import { Installed } from "@/views/Installed";
 import { Snippets } from "@/views/Snippets";
 import { Advanced } from "@/views/Advanced";
 import { Settings } from "@/views/Settings";
+import { DevModeApp } from "@/devmode/DevModeApp";
 
 function CurrentView() {
   const { view } = useApp();
@@ -60,7 +61,8 @@ function Shell() {
 }
 
 function Boot() {
-  const { booting } = useApp();
+  const { booting, mode } = useApp();
+  if (mode === "devmode") return <DevModeApp />;
   return (
     <>
       <div className="flex h-screen w-full overflow-hidden">

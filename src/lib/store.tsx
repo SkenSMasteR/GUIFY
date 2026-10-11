@@ -61,6 +61,8 @@ export type View =
   | "advanced"
   | "settings";
 
+export type Mode = "guify" | "devmode";
+
 export type ActivityKind =
   | "run"
   | "install"
@@ -85,8 +87,11 @@ const MAX_LINES = 500;
 const MAX_ACTIVITY = 60;
 const ADV_KEY = "guify.advanced";
 const AAP_KEY = "guify.autoApply";
+const MODE_KEY = "guify.mode";
 
 interface Ctx {
+  mode: Mode;
+  setMode: (m: Mode) => void;
   view: View;
   setView: (v: View) => void;
   booting: boolean;
@@ -159,6 +164,9 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [mode, setModeState] = useState<Mode>(() =>
+    localStorage.getItem(MODE_KEY) === "devmode" ? "devmode" : "guify",
+  );
   const [view, setView] = useState<View>("dashboard");
   const [advanced, setAdvancedState] = useState<boolean>(
     () => localStorage.getItem(ADV_KEY) === "1",
@@ -196,6 +204,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const actId = useRef(0);
   const logOpenRef = useRef(false);
   const loadedOnce = useRef(false);
+
+  const setMode = useCallback((m: Mode) => {
+    setModeState(m);
+    localStorage.setItem(MODE_KEY, m);
+  }, []);
 
   const setAdvanced = useCallback((v: boolean) => {
     setAdvancedState(v);
@@ -754,6 +767,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(
     () => ({
+      mode,
+      setMode,
       view,
       setView,
       booting,
@@ -820,7 +835,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleDevtools,
     }),
     [
-      view, advanced, setAdvanced, status, localThemes, localExtensions, installs, booting,
+      mode, view, advanced, setAdvanced, status, localThemes, localExtensions, installs, booting,
       cards, browseLoading, showArchived, setShowArchived, extCards, extLoading, snippets,
       snippetCards, snippetLoading, marketSnippets, spotifyConnected,
       cliLines, clearCli, activities, clearActivities, logOpen, watchOn, busy, pending, autoApply, setAutoApply, updateAvailable, devtools,
