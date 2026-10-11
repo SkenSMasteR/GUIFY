@@ -106,6 +106,23 @@ export interface MarketSnippet {
 
 export const SNIPPET_EXT = "guify-snippets.js";
 
+export interface ProjectEntries {
+  js: string;
+  css: string;
+}
+
+export interface ProjectMeta {
+  name: string;
+  tags: string[];
+  version: string;
+  authors: string[];
+  description: string;
+  entries: ProjectEntries;
+  hasMixins: boolean;
+  dependencies: Record<string, string>;
+  preview: string;
+}
+
 export const getStatus = () => invoke<Status>("get_status");
 export const runCli = (command: string, args: string[] = []) =>
   invoke<number>("run_cli", { command, args });
@@ -153,5 +170,8 @@ export const onCliOutput = (cb: (line: CliLine) => void) =>
   listen<CliLine>("cli-output", (e) => cb(e.payload));
 export const onSnippetsConnected = (cb: (connected: boolean) => void) =>
   listen<boolean>("snippets-connected", (e) => cb(e.payload));
+export const devmodeListProjects = () => invoke<ProjectMeta[]>("devmode_list_projects");
+export const devmodeCreateProject = (meta: ProjectMeta) =>
+  invoke<ProjectMeta>("devmode_create_project", { meta });
 
 export { openUrl };

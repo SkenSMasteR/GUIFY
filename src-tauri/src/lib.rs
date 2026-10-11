@@ -1,6 +1,7 @@
 mod cli;
 mod commands;
 mod config;
+mod devmode;
 mod discovery;
 mod error;
 mod extension;
@@ -55,7 +56,9 @@ pub fn run() {
             commands::add_market_snippet,
             commands::remove_market_snippet,
             commands::toggle_market_snippet,
-            commands::snippets_connected
+            commands::snippets_connected,
+            devmode::devmode_list_projects,
+            devmode::devmode_create_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running GUIFY");
