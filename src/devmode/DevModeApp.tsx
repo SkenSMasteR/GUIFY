@@ -14,7 +14,7 @@ function EditorPlaceholder() {
       </div>
       <p className="text-lg font-medium">{activeProject?.name}</p>
       <p className="text-muted-foreground max-w-sm text-center text-sm">
-        Add this later with CodeMirror 6 <3
+        Add this later with CodeMirror 6 ❤️
       </p>
       <Button variant="outline" size="sm" onClick={backToProjects}>
         Back to projects
