@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, Braces, Minus, Plus, Square, X } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
 import { getWindowControls, type WindowControls } from "@/lib/api";
 import { closeWindow, isMaximized, minimize, toggleMaximize } from "@/lib/window";
+import { cn } from "@/lib/utils";
 import { DevModeProvider, useDevMode } from "./store";
 import { ProjectsView } from "./ProjectsView";
+import { EditorView } from "./EditorView";
 
 function MacDot({
   color,
@@ -28,24 +30,6 @@ function MacDot({
         {children}
       </span>
     </button>
-  );
-}
-
-function EditorPlaceholder() {
-  const { activeProject, backToProjects } = useDevMode();
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3">
-      <div className="bg-muted flex size-14 items-center justify-center rounded-2xl">
-        <Braces className="size-7" />
-      </div>
-      <p className="text-lg font-medium">{activeProject?.name}</p>
-      <p className="text-muted-foreground max-w-sm text-center text-sm">
-        Add this later with CodeMirror 6 ❤️
-      </p>
-      <Button variant="outline" size="sm" onClick={backToProjects}>
-        Back to projects
-      </Button>
-    </div>
   );
 }
 
@@ -140,8 +124,13 @@ function DevModeBody() {
           )}
         </div>
       </header>
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {screen === "projects" ? <ProjectsView /> : <EditorPlaceholder />}
+      <main
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          screen === "projects" ? "overflow-y-auto" : "overflow-hidden",
+        )}
+      >
+        {screen === "projects" ? <ProjectsView /> : <EditorView />}
       </main>
     </div>
   );
